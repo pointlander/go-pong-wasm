@@ -148,7 +148,7 @@ func (n *Network) Iterate() {
 		for range 1024 {
 			for i := range neurons[neuron].Vector[:width] {
 				if neurons[neuron].Vector[i] > 128 {
-					for i, value := range neurons[neuron].Vector {
+					for i, value := range neurons[neuron].Vector[:width] {
 						neurons[neuron].Vector[i] = math.Round(value / 2)
 					}
 					break

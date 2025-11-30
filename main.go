@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 	"github.com/hajimehoshi/ebiten/inpututil"
 	"image/color"
+	"math"
 	"math/rand"
 	"runtime"
 )
@@ -37,13 +38,14 @@ const (
 const (
 	windowWidth  = 800
 	windowHeight = 600
+	Size         = 32
 )
 
 // NewGame creates an initializes a new game
 func NewGame(aiMode bool) *Game {
 	g := &Game{}
 	g.init(aiMode)
-	g.Network = pong.NewNetwork(4, 32, 8)
+	g.Network = pong.NewNetwork(4, Size, 8)
 	g.rng = rand.New(rand.NewSource(1))
 	return g
 }
@@ -218,7 +220,7 @@ func (g *Game) Update(screen *ebiten.Image) error {
 	if g.Fire == 0 {
 		width := g.Network.Width
 		rng := rand.New(rand.NewSource(1))
-		for i := range 32 {
+		for i := range Size {
 			sum := 0.0
 			for h := range windowHeight {
 				for w := range windowWidth {
@@ -233,6 +235,15 @@ func (g *Game) Update(screen *ebiten.Image) error {
 				}
 			}
 			g.Network.Neurons[g.Net].Vector[width+i] = sum
+		}
+		{
+			sum := 0.0
+			for i := range Size {
+				sum += math.Abs(g.Network.Neurons[g.Net].Vector[width+i])
+			}
+			for i := range Size {
+				g.Network.Neurons[g.Net].Vector[width+i] /= sum
+			}
 		}
 		g.Net = (g.Net + 1) % 6
 		g.Network.Iterate()
