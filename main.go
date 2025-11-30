@@ -269,9 +269,16 @@ func (g *Game) Update(screen *ebiten.Image) error {
 			Divider:    1,
 		}
 		pong.MorpheusFast(rng.Int63(), config, vectors)
-		sum := vectors[6].Stddev + vectors[7].Stddev
-		fmt.Println(sum, vectors[6].Stddev/sum, vectors[7].Stddev/sum)
-		if g.rng.Float64() > vectors[6].Stddev/sum {
+		sum := 0.0
+		sub := 0.0
+		for i := range vectors {
+			sum += vectors[i].Stddev
+			if i&1 == 0 {
+				sub += vectors[i].Stddev
+			}
+		}
+		fmt.Println(sub, sum, sub/sum)
+		if g.rng.Float64() > sub/sum {
 			g.player1.PressUp(screen)
 			fmt.Println("up")
 		} else {
