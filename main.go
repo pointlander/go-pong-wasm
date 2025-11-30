@@ -24,6 +24,7 @@ type Game struct {
 	Network  pong.Network
 	Net      int
 	Fire     int
+	rng      *rand.Rand
 }
 
 const (
@@ -43,6 +44,7 @@ func NewGame(aiMode bool) *Game {
 	g := &Game{}
 	g.init(aiMode)
 	g.Network = pong.NewNetwork(4, 32, 8)
+	g.rng = rand.New(rand.NewSource(1))
 	return g
 }
 
@@ -234,12 +236,47 @@ func (g *Game) Update(screen *ebiten.Image) error {
 		}
 		g.Net = (g.Net + 1) % 6
 		g.Network.Iterate()
-		up := pong.NCS(g.Network.Neurons[6].Vector[:width], g.player1.UpV.Data)
+		/*up := pong.NCS(g.Network.Neurons[6].Vector[:width], g.player1.UpV.Data)
 		down := pong.NCS(g.Network.Neurons[7].Vector[:width], g.player1.DownV.Data)
 		if up > down {
 			g.player1.PressUp(screen)
 		} else {
 			g.player1.PressDown(screen)
+		}*/
+		vectors := make([]*pong.Vector[pong.Neuron], 8)
+		for ii := range 6 {
+			vector := pong.Vector[pong.Neuron]{}
+			vector.Meta = g.Network.Neurons[ii]
+			vector.Vector = g.Network.Neurons[ii].Vector[:width]
+			vectors[ii] = &vector
+
+		}
+		{
+			a := pong.Vector[pong.Neuron]{}
+			a.Meta = g.Network.Neurons[6]
+			a.Vector = g.Network.Neurons[6].Vector[:width]
+			vectors[6] = &a
+		}
+		{
+			a := pong.Vector[pong.Neuron]{}
+			a.Meta = g.Network.Neurons[7]
+			a.Vector = g.Network.Neurons[7].Vector[:width]
+			vectors[7] = &a
+		}
+		config := pong.Config{
+			Iterations: 16,
+			Size:       width,
+			Divider:    1,
+		}
+		pong.MorpheusFast(rng.Int63(), config, vectors)
+		sum := vectors[6].Stddev + vectors[7].Stddev
+		fmt.Println(sum, vectors[6].Stddev/sum, vectors[7].Stddev/sum)
+		if g.rng.Float64() > vectors[6].Stddev/sum {
+			g.player1.PressUp(screen)
+			fmt.Println("up")
+		} else {
+			g.player1.PressDown(screen)
+			fmt.Println("down")
 		}
 	}
 	g.Fire = (g.Fire + 1) % 1
