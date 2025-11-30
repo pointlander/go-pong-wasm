@@ -6,6 +6,8 @@ import (
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 	"github.com/hajimehoshi/ebiten/inpututil"
+	"image/color"
+	"math/rand"
 	"runtime"
 )
 
@@ -19,6 +21,9 @@ type Game struct {
 	rally    int
 	level    int
 	maxScore int
+	Network  pong.Network
+	Net      int
+	Fire     int
 }
 
 const (
@@ -37,6 +42,7 @@ const (
 func NewGame(aiMode bool) *Game {
 	g := &Game{}
 	g.init(aiMode)
+	g.Network = pong.NewNetwork(4, 32, 8)
 	return g
 }
 
@@ -49,6 +55,15 @@ func (g *Game) init(aiMode bool) {
 		g.maxScore = 11
 	}
 
+	rng := rand.New(rand.NewSource(1))
+	up := pong.NewMatrix(4, 1, make([]float64, 4)...)
+	down := pong.NewMatrix(4, 1, make([]float64, 4)...)
+	for i := range up.Data {
+		up.Data[i] = rng.Float64()
+	}
+	for i := range down.Data {
+		down.Data[i] = rng.Float64()
+	}
 	g.player1 = &pong.Paddle{
 		Position: pong.Position{
 			X: pong.InitPaddleShift,
@@ -60,6 +75,8 @@ func (g *Game) init(aiMode bool) {
 		Color:  pong.ObjColor,
 		Up:     ebiten.KeyW,
 		Down:   ebiten.KeyS,
+		UpV:    up,
+		DownV:  down,
 	}
 	g.player2 = &pong.Paddle{
 		Position: pong.Position{
@@ -196,7 +213,36 @@ func (g *Game) Update(screen *ebiten.Image) error {
 	}
 
 	g.Draw(screen)
-
+	if g.Fire == 0 {
+		width := g.Network.Width
+		rng := rand.New(rand.NewSource(1))
+		for i := range 32 {
+			sum := 0.0
+			for h := range windowHeight {
+				for w := range windowWidth {
+					pixel := screen.At(w, h)
+					grayPixel := color.GrayModel.Convert(pixel).(color.Gray)
+					x := rng.Intn(6)
+					if x == 0 {
+						sum += float64(grayPixel.Y)
+					} else if x == 1 {
+						sum -= float64(grayPixel.Y)
+					}
+				}
+			}
+			g.Network.Neurons[g.Net].Vector[width+i] = sum
+		}
+		g.Net = (g.Net + 1) % 6
+		g.Network.Iterate()
+		up := pong.NCS(g.Network.Neurons[6].Vector[:width], g.player1.UpV.Data)
+		down := pong.NCS(g.Network.Neurons[7].Vector[:width], g.player1.DownV.Data)
+		if up > down {
+			g.player1.PressUp(screen)
+		} else {
+			g.player1.PressDown(screen)
+		}
+	}
+	g.Fire = (g.Fire + 1) % 1
 	return nil
 }
 

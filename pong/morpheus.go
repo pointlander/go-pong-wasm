@@ -63,7 +63,7 @@ func MorpheusFast[T any](seed int64, config Config, vectors []*Vector[T]) {
 		xx := aa.MulT(x).Unit()
 		yy := bb.MulT(y).Unit()
 		cs := yy.MulT(xx)
-		result := PageRank(1.0, 256, rng.Uint32(), cs)
+		result := PageRank(1.0, 8, rng.Uint32(), cs)
 		/*for i := range cs.Rows {
 			for ii := range cs.Cols {
 				cs := cs.Data[i*cs.Cols+ii]

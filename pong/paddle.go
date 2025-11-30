@@ -26,6 +26,8 @@ type Paddle struct {
 	Img          *ebiten.Image
 	pressed      keysPressed
 	scorePrinted scorePrinted
+	UpV          Matrix[float64]
+	DownV        Matrix[float64]
 }
 
 const (
@@ -48,14 +50,39 @@ type scorePrinted struct {
 
 // Neuron a neuron
 type Neuron struct {
-	Connections [4]int
-	Vector      [4]float64
+	Connections []int
+	Vector      []float64
+}
+
+// Network is a neural network
+type Network struct {
+	Rng       *rand.Rand
+	Width     int
+	Embedding int
+	Neurons   []Neuron
+}
+
+// NewNetwork creates a new neural network
+func NewNetwork(width, embedding, size int) Network {
+	neurons := make([]Neuron, size)
+	for i := range neurons {
+		neurons[i].Connections = make([]int, width)
+		neurons[i].Vector = make([]float64, width+embedding)
+	}
+	return Network{
+		Rng:       rand.New(rand.NewSource(1)),
+		Width:     width,
+		Embedding: embedding,
+		Neurons:   neurons,
+	}
 }
 
 // NeuralMode neural mode
-func NeuralMode() {
-	rng := rand.New(rand.NewSource(1))
-	neurons := make([]Neuron, 8)
+func (n *Network) Iterate() {
+	rng := n.Rng
+	neurons := n.Neurons
+	width := n.Width
+	embedding := n.Embedding
 	for i := range neurons {
 		for ii := range neurons[i].Connections {
 			next := rng.Intn(len(neurons))
@@ -64,11 +91,11 @@ func NeuralMode() {
 			}
 			neurons[i].Connections[ii] = next
 		}
-		for ii := range neurons[i].Vector {
+		for ii := range neurons[i].Vector[:width] {
 			neurons[i].Vector[ii] = float64(rng.Intn(256))
 		}
 	}
-	for {
+	{
 		for i := range neurons {
 			next := rng.Intn(len(neurons))
 			for next == i || slices.Contains(neurons[i].Connections[:], next) {
@@ -79,27 +106,27 @@ func NeuralMode() {
 			for ii := range neurons[i].Connections {
 				vector := Vector[Neuron]{}
 				vector.Meta = neurons[neurons[i].Connections[ii]]
-				vector.Vector = neurons[neurons[i].Connections[ii]].Vector[:]
+				vector.Vector = neurons[neurons[i].Connections[ii]].Vector
 				vectors[ii] = &vector
 				index++
 			}
 			{
 				a := Vector[Neuron]{}
 				a.Meta = neurons[next]
-				a.Vector = neurons[next].Vector[:]
+				a.Vector = neurons[next].Vector
 				vectors[index] = &a
 				index++
 			}
 			{
 				a := Vector[Neuron]{}
 				a.Meta = neurons[i]
-				a.Vector = neurons[i].Vector[:]
+				a.Vector = neurons[i].Vector
 				vectors[index] = &a
 				index++
 			}
 			config := Config{
 				Iterations: 16,
-				Size:       4,
+				Size:       width + embedding,
 				Divider:    1,
 			}
 			MorpheusFast(rng.Int63(), config, vectors)
@@ -119,7 +146,7 @@ func NeuralMode() {
 		fmt.Println()
 		previous, neuron := 0, 0
 		for range 1024 {
-			for i := range neurons[neuron].Vector {
+			for i := range neurons[neuron].Vector[:width] {
 				if neurons[neuron].Vector[i] > 128 {
 					for i, value := range neurons[neuron].Vector {
 						neurons[neuron].Vector[i] = math.Round(value / 2)
@@ -128,11 +155,11 @@ func NeuralMode() {
 				}
 			}
 			sum := 0.0
-			for _, value := range neurons[neuron].Vector {
+			for _, value := range neurons[neuron].Vector[:width] {
 				sum += value
 			}
 			total, index, selected := 0.0, 0, float64(rng.Intn(int(sum)))
-			for i, value := range neurons[neuron].Vector {
+			for i, value := range neurons[neuron].Vector[:width] {
 				total += value
 				if selected < total {
 					index = i
@@ -172,6 +199,26 @@ func (p *Paddle) Update(screen *ebiten.Image) {
 		p.Y += p.Speed
 	}
 
+	if p.Y-float32(p.Height/2) < 0 {
+		p.Y = float32(1 + p.Height/2)
+	} else if p.Y+float32(p.Height/2) > float32(h) {
+		p.Y = float32(h - p.Height/2 - 1)
+	}
+}
+
+func (p *Paddle) PressUp(screen *ebiten.Image) {
+	_, h := screen.Size()
+	p.Y -= p.Speed
+	if p.Y-float32(p.Height/2) < 0 {
+		p.Y = float32(1 + p.Height/2)
+	} else if p.Y+float32(p.Height/2) > float32(h) {
+		p.Y = float32(h - p.Height/2 - 1)
+	}
+}
+
+func (p *Paddle) PressDown(screen *ebiten.Image) {
+	_, h := screen.Size()
+	p.Y += p.Speed
 	if p.Y-float32(p.Height/2) < 0 {
 		p.Y = float32(1 + p.Height/2)
 	} else if p.Y+float32(p.Height/2) > float32(h) {
