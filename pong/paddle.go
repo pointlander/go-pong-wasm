@@ -69,6 +69,19 @@ func NewNetwork(width, embedding, size int) Network {
 		neurons[i].Connections = make([]int, width)
 		neurons[i].Vector = make([]float64, width+embedding)
 	}
+	rng := rand.New(rand.NewSource(1))
+	for i := range neurons {
+		for ii := range neurons[i].Connections {
+			next := rng.Intn(len(neurons))
+			for next == i {
+				next = rng.Intn(len(neurons))
+			}
+			neurons[i].Connections[ii] = next
+		}
+		for ii := range neurons[i].Vector[:width] {
+			neurons[i].Vector[ii] = float64(rng.Intn(256))
+		}
+	}
 	return Network{
 		Rng:       rand.New(rand.NewSource(1)),
 		Width:     width,
@@ -83,18 +96,6 @@ func (n *Network) Iterate() {
 	neurons := n.Neurons
 	width := n.Width
 	embedding := n.Embedding
-	for i := range neurons {
-		for ii := range neurons[i].Connections {
-			next := rng.Intn(len(neurons))
-			for next == i {
-				next = rng.Intn(len(neurons))
-			}
-			neurons[i].Connections[ii] = next
-		}
-		for ii := range neurons[i].Vector[:width] {
-			neurons[i].Vector[ii] = float64(rng.Intn(256))
-		}
-	}
 	{
 		for i := range neurons {
 			next := rng.Intn(len(neurons))
