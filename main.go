@@ -24,7 +24,7 @@ type Game struct {
 	maxScore int
 	Network  pong.Network
 	Net      int
-	Fire     int
+	Position int
 	rng      *rand.Rand
 }
 
@@ -217,7 +217,7 @@ func (g *Game) Update(screen *ebiten.Image) error {
 	}
 
 	g.Draw(screen)
-	if g.Fire == 0 {
+	{
 		width := g.Network.Width
 		rng := rand.New(rand.NewSource(1))
 		for i := range Size {
@@ -242,9 +242,18 @@ func (g *Game) Update(screen *ebiten.Image) error {
 				sum += math.Abs(g.Network.Neurons[g.Net].Vector[width+i])
 			}
 			for i := range Size {
+				ii := i / 2
 				g.Network.Neurons[g.Net].Vector[width+i] /= sum
+				if i&1 == 0 {
+					g.Network.Neurons[g.Net].Vector[width+i] +=
+						.1 * math.Sin(float64(g.Position)/math.Pow(10000, float64(2*ii)/Size))
+				} else {
+					g.Network.Neurons[g.Net].Vector[width+i] +=
+						.1 * math.Cos(float64(g.Position)/math.Pow(10000, float64(2*ii)/Size))
+				}
 			}
 		}
+		g.Position++
 		g.Net = (g.Net + 1) % 6
 		g.Network.Iterate()
 		/*up := pong.NCS(g.Network.Neurons[6].Vector[:width], g.player1.UpV.Data)
@@ -289,7 +298,7 @@ func (g *Game) Update(screen *ebiten.Image) error {
 			}
 		}
 		fmt.Println(sub, sum, sub/sum)
-		if g.rng.Float64() > sub/sum {
+		if /*g.rng.Float64() > sub/sum*/ sub > .5 {
 			g.player1.PressUp(screen)
 			fmt.Println("up")
 		} else {
@@ -297,7 +306,6 @@ func (g *Game) Update(screen *ebiten.Image) error {
 			fmt.Println("down")
 		}
 	}
-	g.Fire = (g.Fire + 1) % 1
 	return nil
 }
 
